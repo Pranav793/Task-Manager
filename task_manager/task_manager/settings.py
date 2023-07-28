@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
+    "django_filters",
     "tasks"
 ]
 
@@ -48,6 +50,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "tasks.middleware.CustomMiddleware"
 ]
 
 ROOT_URLCONF = "task_manager.urls"
@@ -127,3 +130,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_REDIRECT_URL = "/tasks"
 LOGIN_URL = "/user/login"
 LOGOUT_REDIRECT_URL = "/"
+
+BROKER_URL = "redis://localhost:6379"
+CELERY_RESULT_BACKEND = "redis://localhost:6379"
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

@@ -11,13 +11,15 @@ from django.views.generic.list import ListView
 from django.contrib.auth.forms import UserCreationForm
 
 from django.contrib.auth.views import LoginView
+from django.contrib.auth.mixins import LoginRequiredMixin
+
 
 from tasks.models import Task
 
 def session_storage_view(request):
     total_views = request.session.get("total_views", 0)
     request.session["total_views"] = total_views +1
-    return HttpResponse(f"Total views is {total_views}")
+    return HttpResponse(f"Total views is {total_views} and the user is {request.user.is_authenticated}")
 
 
 # Create your views here.
@@ -30,20 +32,24 @@ class UserCreateView(CreateView):
     success_url: Optional[str] = "/user/login"
 
 
+class AuthorizedTaskManager(LoginRequiredMixin):
+    def get_queryset(self):
+        return Task.objects.filter(deleted=False, user=self.request.user)
 
-class GenericTaskDeleteView(DeleteView):
+
+class GenericTaskDeleteView(AuthorizedTaskManager, DeleteView):
     model = Task
     template_name: str = "task_delete.html"
     success_url = "/tasks"
 
-class GenericTaskDetailView(DetailView):
+class GenericTaskDetailView(AuthorizedTaskManager, DetailView):
     model = Task
     template_name = "task_detail.html"
 
 class TaskCreateForm(ModelForm):
 
     def clean_title(self):
-        # clean_ + <attribute> gets run automatically
+        # clean_ + <attribute> gets run automatically0
         title = self.cleaned_data["title"]
         if(len(title) < 10):
             raise ValidationError("Data too small")
@@ -54,7 +60,7 @@ class TaskCreateForm(ModelForm):
         fields = ["title", "description", "completed"]
         
 
-class GenericTaskUpdateView(UpdateView):
+class GenericTaskUpdateView (AuthorizedTaskManager,UpdateView):
     model = Task
     form_class = TaskCreateForm
     template_name = "task_update.html"
@@ -66,8 +72,15 @@ class GenericCreateTaskView(CreateView):
     template_name = "task_create.html"
     success_url = "/tasks"
 
+    def form_valid(self, form):
+        """If the form is valid, save the associated model."""
+        self.object = form.save()
+        self.object.user = self.request.user
+        self.object.save()
+        return HttpResponseRedirect(self.get_success_url())
 
-class GenericTaskView(ListView):
+
+class GenericTaskView(LoginRequiredMixin, ListView):
     queryset = Task.objects.filter(deleted=False)
     template_name = "tasks.html"
     context_object_name = "tasks"
@@ -75,7 +88,7 @@ class GenericTaskView(ListView):
 
     def get_queryset(self):
         search_term = self.request.GET.get("search")
-        tasks = Task.objects.filter(deleted=False)
+        tasks = Task.objects.filter(deleted=False, user=self.request.user)
         if search_term:
             tasks = tasks.filter(title__icontains=search_term)
         return tasks

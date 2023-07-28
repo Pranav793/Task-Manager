@@ -15,16 +15,35 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.http import HttpResponse
 from django.contrib import admin
 from django.urls import path
+from tasks.tasks import test_background_jobs
 from tasks.views import (CreateTaskView, GenericCreateTaskView,
                          GenericTaskDetailView, GenericTaskUpdateView,
                          GenericTaskView, GenericTaskDeleteView, UserCreateView, UserLoginView, add_task_view, delete_task_view,
                          tasks_view, session_storage_view)
 from django.contrib.auth.views import LogoutView
 
+from tasks.apiviews import TaskListApi
+
+from rest_framework.routers import SimpleRouter
+
+from tasks.apiviews import TaskViewSet
+
+router = SimpleRouter()
+
+router.register("api/task", TaskViewSet)
+
+
+def test_bg(request):
+    test_background_jobs.delay()
+    return HttpResponse("All good here")
+
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("taskapi", TaskListApi.as_view()),
     path("tasks",  GenericTaskView.as_view()),
     path("create-task",  GenericCreateTaskView.as_view()),
     path("update-task/<pk>",  GenericTaskUpdateView.as_view()),
@@ -35,5 +54,6 @@ urlpatterns = [
     path("user/signup",  UserCreateView.as_view()),
     path("user/login",  UserLoginView.as_view()),
     path("user/logout",  LogoutView.as_view()),
+    path("test_bg",  test_bg),
     # path("delete-task/<int:index>", delete_task_view),
-]
+] + router.urls
